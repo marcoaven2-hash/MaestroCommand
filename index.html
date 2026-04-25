@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCALE V2 | Autonomous Mission Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="stars-overlay"></div>
+    <div class="scanline"></div>
+
+    <header class="main-header">
+        <div class="logo-container">
+            <div class="logo-icon"></div>
+            <div class="logo-text">
+                <h1>SCALE <span class="v2">V2</span></h1>
+                <p>AUTONOMOUS PRODUCT ENGINE</p>
+            </div>
+        </div>
+        <div class="system-status">
+            <div class="status-item">
+                <span class="label">STATUS:</span>
+                <span class="value pulse">OPERATIONAL</span>
+            </div>
+            <div class="status-item">
+                <span class="label">UPTIME:</span>
+                <span class="value" id="uptime">00:00:00</span>
+            </div>
+            <div class="status-item">
+                <span class="label">LOCATION:</span>
+                <span class="value">MEXICO_REGION</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- KPI Panel -->
+        <section class="kpi-panel glass">
+            <div class="kpi-card">
+                <span class="kpi-label">TOTAL REVENUE</span>
+                <span class="kpi-value" id="total-revenue">$0.00</span>
+                <span class="kpi-currency">MXN</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">DAILY SALES</span>
+                <span class="kpi-value" id="daily-sales">0</span>
+                <span class="kpi-target">/ 20</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">AVG CTR</span>
+                <span class="kpi-value" id="avg-ctr">0.00%</span>
+                <span class="kpi-status-indicator high"></span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">ROAS</span>
+                <span class="kpi-value" id="avg-roas">0.0x</span>
+            </div>
+        </section>
+
+        <!-- Agent Command Center -->
+        <section class="agents-grid" id="agents-container">
+            <!-- Agents will be injected here via JS -->
+        </section>
+
+        <!-- Product Pipeline -->
+        <section class="pipeline-panel glass">
+            <header class="panel-header">
+                <h2>PRODUCT PIPELINES</h2>
+                <div class="pipeline-stats">
+                    <span>ACTIVE: <b id="count-active">0</b></span>
+                    <span>TESTING: <b id="count-testing">0</b></span>
+                    <span>SCALING: <b id="count-scaling">0</b></span>
+                </div>
+            </header>
+            <div class="pipeline-lanes">
+                <div class="lane" id="lane-testing">
+                    <h3>TESTING</h3>
+                    <div class="product-list"></div>
+                </div>
+                <div class="lane" id="lane-scaling">
+                    <h3>SCALING</h3>
+                    <div class="product-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Terminal / Logs -->
+        <section class="terminal-panel glass">
+            <header class="panel-header">
+                <h2>SYSTEM LOGS</h2>
+                <span class="live-indicator">LIVE FEED</span>
+            </header>
+            <div class="terminal-body" id="terminal-logs">
+                <div class="log-entry system">Initializing SCALE V2 Engine...</div>
+                <div class="log-entry system">Connecting to TikTok API...</div>
+                <div class="log-entry system">Connecting to Meta API...</div>
+                <div class="log-entry success">Connection established. All agents standing by.</div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="footer-info">© 2026 AUTONOMOUS DIGITAL PRODUCT ENGINE</div>
+        <div class="active-niche">CURRENT NICHES: MONEY | FITNESS | RELATIONSHIPS</div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

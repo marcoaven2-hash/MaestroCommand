@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mayoreo Maestro | Catálogo 2024</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav>
+        <div class="logo">MAYOREO<span>MAESTRO</span></div>
+        <div class="timer">Oferta termina en: <span id="countdown">14:59</span></div>
+    </nav>
+
+    <header>
+        <div class="hero-content">
+            <span class="badge">🔥 El Directorio más confiable de México</span>
+            <h1>Deja de comprarle a revendedores. <span>Compra directo en la bodega.</span></h1>
+            <p>Accede a más de 500 proveedores verificados en CDMX, Monterrey y León. Sin estafas, sin intermediarios, solo ganancias reales.</p>
+            <div class="cta-group">
+                <a href="#comprar" class="btn-primary">DESCARGAR CATÁLOGO AHORA</a>
+                <span class="price-tag">Solo $249 MXN <small>(Precio regular $599)</small></span>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="catalogo_mockup_3d.png" alt="Catálogo Maestro 2024" class="mockup">
+        </div>
+    </header>
+
+    <section class="testimonials">
+        <div class="testimonial-card">
+            <img src="testimonio_1.png" alt="Carlos R.">
+            <p>"Encontré el proveedor de tenis en León que buscaba por meses. Recuperé mi inversión del catálogo en la primera venta."</p>
+            <h4>Carlos R. - Querétaro</h4>
+        </div>
+        <div class="testimonial-card">
+            <img src="testimonio_2.png" alt="Elena M.">
+            <p>"La guía de seguridad me salvó de una estafa en Facebook. Solo por eso ya valió la pena el precio."</p>
+            <h4>Elena M. - Monterrey</h4>
+        </div>
+        <div class="testimonial-card">
+            <img src="testimonio_3.png" alt="Javier L.">
+            <p>"Lo mejor es que los contactos son directos de WhatsApp. En 10 minutos ya estaba cotizando mi primer lote de electrónica."</p>
+            <h4>Javier L. - CDMX</h4>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="card">
+            <div class="icon">🛡️</div>
+            <h3>Proveedores Verificados</h3>
+            <p>Lista curada con locales físicos y referencias comprobables.</p>
+        </div>
+        <div class="card">
+            <div class="icon">📦</div>
+            <h3>Multinicho</h3>
+            <p>Electrónica, Ropa, Calzado, Belleza y Hogar en un solo lugar.</p>
+        </div>
+        <div class="card">
+            <div class="icon">🚀</div>
+            <h3>Guía de Envío</h3>
+            <p>Aprende a recibir tu mercancía de forma segura y barata.</p>
+        </div>
+    </section>
+
+    <section id="comprar" class="checkout-section">
+        <div class="checkout-card">
+            <h2>¿Listo para empezar tu negocio?</h2>
+            <p>El acceso es inmediato y de por vida. Incluye todas las actualizaciones del 2024.</p>
+            <ul>
+                <li>✅ +500 Contactos Directos (WhatsApp/Tel)</li>
+                <li>✅ Guía Anti-Estafas Incluida</li>
+                <li>✅ Soporte para tus primeras compras</li>
+            </ul>
+            <a href="TU_LINK_DE_HOTMART_AQUI" class="btn-checkout">OBTENER ACCESO POR $249 MXN</a>
+            <img src="https://img.icons8.com/color/48/000000/visa.png" alt="Visa">
+            <img src="https://img.icons8.com/color/48/000000/mastercard.png" alt="Mastercard">
+            <img src="https://img.icons8.com/color/48/000000/amex.png" alt="Amex">
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 Mayoreo Maestro - Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        // Simple timer logic
+        let time = 899;
+        const countdownEl = document.getElementById('countdown');
+        setInterval(() => {
+            let minutes = Math.floor(time / 60);
+            let seconds = time % 60;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            countdownEl.innerHTML = `${minutes}:${seconds}`;
+            time--;
+            if(time < 0) time = 899;
+        }, 1000);
+    </script>
+</body>
+</html>
