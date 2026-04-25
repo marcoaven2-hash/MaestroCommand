@@ -1,7 +1,20 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
+const express = require('express');
 require('dotenv').config();
+
+const app = express();
+const port = process.env.PORT || 10000;
+
+// Marcapasos: Endpoint de salud para que Render no se duerma
+app.get('/', (req, res) => {
+    res.send('🤖 Maestro Command Bot está despierto y vigilando.');
+});
+
+app.listen(port, () => {
+    console.log(`📡 Servidor de salud escuchando en el puerto ${port}`);
+});
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, {polling: true});
