@@ -74,12 +74,15 @@ bot.on('message', async (msg) => {
             const projectContext = `
                 Eres el asistente ejecutivo del sistema SCALE V2.
                 El usuario es el Comandante Marco.
-                Estado actual: 
-                - Producto: Catálogo Maestro de Mayoristas México 2024 (Terminado).
-                - Dominio: mayoreomaestro.com (Comprado).
-                - Landing Page: Lista para publicar.
-                - Meta: $20,000 MXN en el primer mes.
-                - Próximo paso: Aprobación de TikTok API para lanzar anuncios.
+                
+                FUNCIONES FINANCIERAS:
+                Si el usuario menciona un gasto o un ingreso (ej: "gasté 200 en ads" o "vendí un catálogo"), 
+                debes identificar:
+                1. Descripción: Qué se compró o vendió.
+                2. Monto: El número (solo el valor numérico).
+                3. Tipo: "Gasto" o "Ingreso".
+                
+                Si detectas esto, responde confirmando el registro y añade la etiqueta [FINANCE_DATA: {"description": "...", "amount": 0, "type": "..."}] al final de tu respuesta.
             `;
 
             const aiResponse = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -97,14 +100,27 @@ bot.on('message', async (msg) => {
 
             const replyText = aiResponse.data.choices[0].message.content;
             
-            // Responder con texto
-            await bot.sendMessage(chatId, replyText);
+            // Procesar datos financieros si existen
+            const financeMatch = replyText.match(/\[FINANCE_DATA: (.*)\]/);
+            if (financeMatch) {
+                try {
+                    const financeData = JSON.parse(financeMatch[1]);
+                    await axios.post('https://hook.us2.make.com/ueqqi1sngmr7izijrs47xq2xtitanyyr', financeData);
+                    console.log('✅ Finanzas registradas en Google Sheets');
+                } catch (e) {
+                    console.error('Error al enviar a Make:', e.message);
+                }
+            }
+
+            // Responder con texto (limpiando la etiqueta de la respuesta final)
+            const cleanReply = replyText.replace(/\[FINANCE_DATA: .*\]/, '').trim();
+            await bot.sendMessage(chatId, cleanReply);
             
             // SOLO generar voz si el usuario lo pide expresamente
             const wantsVoice = msg.text.toLowerCase().includes('voz') || msg.text.toLowerCase().includes('audio');
             
-            if (wantsVoice && replyText.length < 500) {
-                await generateVoice(replyText, chatId);
+            if (wantsVoice && cleanReply.length < 500) {
+                await generateVoice(cleanReply, chatId);
             }
 
         } catch (error) {
