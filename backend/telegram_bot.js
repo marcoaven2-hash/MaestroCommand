@@ -84,7 +84,7 @@ cron.schedule('0 20 * * *', async () => {
                 const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
                     model: "gpt-4o",
                     messages: [{ role: "system", content: context }]
-                }, { headers: { 'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\` } });
+                }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
                 const reply = ai.data.choices[0].message.content;
                 await bot.sendMessage(chatId, reply);
                 saveMessage(chatId, "assistant", reply);
@@ -156,7 +156,7 @@ bot.on('message', async (msg) => {
             formData.append('model', 'whisper-1');
 
             const transcriptResponse = await axios.post('https://api.openai.com/v1/audio/transcriptions', formData, {
-                headers: { ...formData.getHeaders(), 'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\` }
+                headers: { ...formData.getHeaders(), 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
             });
             textToProcess = transcriptResponse.data.text;
             wantsVoice = true; // Responder con voz si envió voz
@@ -206,7 +206,7 @@ bot.on('message', async (msg) => {
 
             // Obtener datos reales de GA4 para inyectar en contexto
             const ga4Data = await getGA4Data();
-            const dynamicContext = projectContext + \`\\n\\nMETRICAS DE TRÁFICO REALES DE HOY: \${ga4Data}\`;
+            const dynamicContext = projectContext + `\n\nMETRICAS DE TRÁFICO REALES DE HOY: ${ga4Data}`;
 
             const messages = [
                 { role: "system", content: dynamicContext },
@@ -218,7 +218,7 @@ bot.on('message', async (msg) => {
                 messages: messages
             }, {
                 headers: {
-                    'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`,
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                     'Content-Type': 'application/json'
                 }
             });
