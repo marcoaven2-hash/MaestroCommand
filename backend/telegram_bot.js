@@ -18,6 +18,15 @@ app.listen(port, () => {
     console.log(`📡 Servidor de salud escuchando en el puerto ${port}`);
 });
 
+// --- Auto-Ping (Marcapasos 24/7) ---
+// El bot se "visita" a sí mismo cada 14 minutos para que Render nunca lo duerma
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+setInterval(() => {
+    axios.get(RENDER_URL)
+        .then(() => console.log(`[Auto-Ping] Latido exitoso. Servidor despierto.`))
+        .catch((err) => console.error(`[Auto-Ping] Error:`, err.message));
+}, 14 * 60 * 1000);
+
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, {polling: true});
 
