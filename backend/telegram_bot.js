@@ -21,6 +21,9 @@ const bot = new TelegramBot(token, {polling: true});
 
 console.log('🤖 Maestro Command Bot está en línea...');
 
+// Memoria de conversación persistente en la sesión
+const chatHistories = {};
+
 // Función para generar voz con ElevenLabs
 async function generateVoice(text, chatId) {
     try {
@@ -53,16 +56,16 @@ async function generateVoice(text, chatId) {
 // Comando /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, `🚀 Bienvenido, Comandante. Soy el sistema SCALE V2.\n\nEstoy listo para darte reportes de ventas y actualizaciones. \n\nUsa /status para ver el progreso actual.`);
+    bot.sendMessage(chatId, `🚀 Listo Marco. Soy tu Socio Operativo y COO para Mayoreo Maestro.\n\nMi objetivo es escalar el negocio, analizar métricas y controlar el flujo de caja.\n\nEstoy conectado y monitoreando. Usa /status para un reporte ejecutivo.`);
 });
 
 // Comando /status
 bot.onText(/\/status/, async (msg) => {
     const chatId = msg.chat.id;
-    const report = "Reporte de hoy:\n- Catálogo: Terminado\n- Landing Page: Lista\n- TikTok Ads: Pendiente de verificación\n- Ventas: $0 (Lanzamiento mañana)";
+    const report = "Reporte Ejecutivo - Mayoreo Maestro:\n- Ebook y Guía de Proveedores: Listos (99 MXN)\n- Automatización: Embudo Activo\n- Tráfico: Monitoreando TikTok Ads y Orgánico\n- Flujo de Caja: En registro";
     
     await bot.sendMessage(chatId, report);
-    await generateVoice("Hola Comandante. Aquí tienes el reporte: El catálogo y la página de ventas están listos al cien por ciento. Solo estamos esperando la aprobación de TikTok para encender la máquina de pauta.", chatId);
+    await generateVoice("Hola Marco. Aquí tienes el estatus ejecutivo. La infraestructura está lista y el embudo activo. Monitoreando tráfico en TikTok y listos para escalar operaciones.", chatId);
 });
 
 // Responder a mensajes de texto normales con IA
@@ -72,25 +75,43 @@ bot.on('message', async (msg) => {
         try {
             // Contexto del proyecto para la IA
             const projectContext = `
-                Eres el asistente ejecutivo del sistema SCALE V2.
-                El usuario es el Comandante Marco.
+                Rol: Eres el Director de Operaciones (COO) y asistente personal de Marco en el proyecto "Mayoreo Maestro".
+                No eres un bot de comandos; eres una inteligencia proactiva, analítica y con iniciativa. 
+                Tu tono es profesional, ejecutivo y directo, con la energía de un socio para escalar el negocio.
                 
-                FUNCIONES FINANCIERAS:
-                Si el usuario menciona un gasto o un ingreso (ej: "gasté 200 en ads" o "vendí un catálogo"), 
-                debes identificar:
-                1. Descripción: Qué se compró o vendió.
-                2. Monto: El número (solo el valor numérico).
-                3. Tipo: "Gasto" o "Ingreso".
+                Objetivos:
+                1. Gestión Financiera: Registra gastos/ingresos mentalmente. Pregunta categoría si no es clara.
+                2. Control de Proyecto: Guarda info sobre el ebook (99 MXN), catálogo de proveedores y embudos.
+                3. Análisis de Tráfico: Monitorea mayoreomaestro.com. Menciona clics, conversiones y visitas.
                 
-                Si detectas esto, responde confirmando el registro y añade la etiqueta [FINANCE_DATA: {"description": "...", "amount": 0, "type": "..."}] al final de tu respuesta.
+                Directrices:
+                - Proactividad: Advierte sobre métricas o gastos irregulares.
+                - Personalidad: Growth Hacker. Usa ROI, CTR, escalabilidad.
+                - Brevedad: Datos clave primero, detalles después.
+                - Autonomía: Ante tareas complejas di "Ya estoy en ello".
+                
+                FUNCIONES FINANCIERAS (INTEGRACIÓN MAKE/SHEETS):
+                Si el usuario menciona un gasto o ingreso, debes extraer los datos y SIEMPRE incluir al final de tu respuesta la etiqueta estricta:
+                [FINANCE_DATA: {"description": "...", "amount": 0, "type": "Gasto o Ingreso"}]
             `;
+
+            // Configuración de la Memoria a Largo Plazo
+            if (!chatHistories[chatId]) {
+                chatHistories[chatId] = [];
+            }
+            chatHistories[chatId].push({ role: "user", content: msg.text });
+            if (chatHistories[chatId].length > 15) {
+                chatHistories[chatId].shift(); // Mantener contexto limitado para no saturar tokens
+            }
+
+            const messages = [
+                { role: "system", content: projectContext },
+                ...chatHistories[chatId]
+            ];
 
             const aiResponse = await axios.post('https://api.openai.com/v1/chat/completions', {
                 model: "gpt-4o",
-                messages: [
-                    { role: "system", content: projectContext },
-                    { role: "user", content: msg.text }
-                ]
+                messages: messages
             }, {
                 headers: {
                     'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -100,6 +121,9 @@ bot.on('message', async (msg) => {
 
             const replyText = aiResponse.data.choices[0].message.content;
             
+            // Guardar respuesta del asistente en memoria
+            chatHistories[chatId].push({ role: "assistant", content: replyText });
+
             // Procesar datos financieros si existen
             const financeMatch = replyText.match(/\[FINANCE_DATA: (.*)\]/);
             if (financeMatch) {
