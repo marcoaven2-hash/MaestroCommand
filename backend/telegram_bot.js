@@ -4,6 +4,8 @@ const fs = require('fs');
 const express = require('express');
 require('dotenv').config();
 
+const FormData = require('form-data');
+
 const app = express();
 const port = process.env.PORT || 10000;
 
@@ -140,7 +142,31 @@ bot.onText(/\/status/, async (msg) => {
 // Responder a mensajes de texto normales con IA
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    if (msg.text && !msg.text.startsWith('/')) {
+    let textToProcess = msg.text;
+    let wantsVoice = false;
+
+    if (msg.voice) {
+        try {
+            await bot.sendMessage(chatId, "⏳ Escuchando...");
+            const fileLink = await bot.getFileLink(msg.voice.file_id);
+            const audioResponse = await axios({ url: fileLink, method: 'GET', responseType: 'stream' });
+            
+            const formData = new FormData();
+            formData.append('file', audioResponse.data, { filename: 'voice.ogg', contentType: 'audio/ogg' });
+            formData.append('model', 'whisper-1');
+
+            const transcriptResponse = await axios.post('https://api.openai.com/v1/audio/transcriptions', formData, {
+                headers: { ...formData.getHeaders(), 'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\` }
+            });
+            textToProcess = transcriptResponse.data.text;
+            wantsVoice = true; // Responder con voz si envió voz
+        } catch (e) {
+            console.error("Error transcribiendo:", e.message);
+            return bot.sendMessage(chatId, "❌ Error al procesar tu audio.");
+        }
+    }
+
+    if (textToProcess && !textToProcess.startsWith('/')) {
         try {
             // Contexto del proyecto para la IA
             const projectContext = `
@@ -173,7 +199,7 @@ bot.on('message', async (msg) => {
             `;
 
             // Guardar mensaje de usuario en SQLite
-            saveMessage(chatId, "user", msg.text);
+            saveMessage(chatId, "user", textToProcess);
 
             // Leer historia desde SQLite
             const history = await getHistory(chatId);
@@ -218,10 +244,10 @@ bot.on('message', async (msg) => {
             const cleanReply = replyText.replace(/\[FINANCE_DATA: .*\]/, '').trim();
             await bot.sendMessage(chatId, cleanReply);
             
-            // SOLO generar voz si el usuario lo pide expresamente
-            const wantsVoice = msg.text.toLowerCase().includes('voz') || msg.text.toLowerCase().includes('audio');
+            // Generar voz si lo pidió o si envió un audio
+            const userAskedForVoice = textToProcess.toLowerCase().includes('voz') || textToProcess.toLowerCase().includes('audio');
             
-            if (wantsVoice && cleanReply.length < 500) {
+            if ((wantsVoice || userAskedForVoice) && cleanReply.length < 500) {
                 await generateVoice(cleanReply, chatId);
             }
 
