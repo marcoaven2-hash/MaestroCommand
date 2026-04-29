@@ -21,8 +21,77 @@ const bot = new TelegramBot(token, {polling: true});
 
 console.log('🤖 Maestro Command Bot está en línea...');
 
-// Memoria de conversación persistente en la sesión
-const chatHistories = {};
+// --- 2. Memoria Persistente (SQLite3) ---
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./chatbot.db', (err) => {
+    if (err) console.error("Error BD:", err.message);
+    else {
+        console.log("✅ Conectado a SQLite.");
+        db.run(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id TEXT, role TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        db.run(`CREATE TABLE IF NOT EXISTS users (chat_id TEXT PRIMARY KEY)`);
+    }
+});
+
+function getHistory(chatId) {
+    return new Promise((resolve) => {
+        db.all(`SELECT role, content FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT 15`, [chatId], (err, rows) => {
+            if (err) resolve([]);
+            else resolve(rows.reverse());
+        });
+    });
+}
+function saveMessage(chatId, role, content) {
+    db.run(`INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)`, [chatId, role, content]);
+    db.run(`INSERT OR IGNORE INTO users (chat_id) VALUES (?)`, [chatId]);
+}
+
+// --- 4. Google Analytics (GA4) ---
+const { BetaAnalyticsDataClient } = require('@google-analytics/data');
+const analyticsDataClient = new BetaAnalyticsDataClient();
+
+async function getGA4Data() {
+    try {
+        const propertyId = process.env.GA4_PROPERTY_ID;
+        if (!propertyId) return "GA4 pendiente de configurar en .env (falta GA4_PROPERTY_ID)";
+        const [response] = await analyticsDataClient.runReport({
+            property: `properties/${propertyId}`,
+            dateRanges: [{ startDate: 'today', endDate: 'today' }],
+            metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+        });
+        if (response.rows && response.rows.length > 0) {
+            return `Usuarios activos hoy: ${response.rows[0].metricValues[0].value}, Sesiones: ${response.rows[0].metricValues[1].value}`;
+        }
+        return "Sin tráfico detectado hoy.";
+    } catch (e) {
+        return `Error GA4: ${e.message}`;
+    }
+}
+
+// --- 3. Reportes Proactivos (node-cron) ---
+const cron = require('node-cron');
+// Todos los días a las 20:00 (8 PM)
+cron.schedule('0 20 * * *', async () => {
+    console.log('Ejecutando reporte proactivo cron...');
+    const ga4Data = await getGA4Data();
+    db.all(`SELECT chat_id FROM users`, [], async (err, rows) => {
+        if (err || !rows) return;
+        for (const row of rows) {
+            const chatId = row.chat_id;
+            const context = `Eres el COO. Escribe un mensaje corto y proactivo para Marco. Es el corte del día (8:00 PM). Tráfico hoy: ${ga4Data}. Pídele sus gastos para cuadrar el Estado de Resultados. Sé muy ejecutivo y usa métricas de Growth.`;
+            try {
+                const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
+                    model: "gpt-4o",
+                    messages: [{ role: "system", content: context }]
+                }, { headers: { 'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\` } });
+                const reply = ai.data.choices[0].message.content;
+                await bot.sendMessage(chatId, reply);
+                saveMessage(chatId, "assistant", reply);
+            } catch(e) {
+                console.error("Error en cron:", e.message);
+            }
+        }
+    });
+});
 
 // Función para generar voz con ElevenLabs
 async function generateVoice(text, chatId) {
@@ -81,32 +150,41 @@ bot.on('message', async (msg) => {
                 
                 Objetivos:
                 1. Gestión Financiera: Registra gastos/ingresos mentalmente. Pregunta categoría si no es clara.
-                2. Control de Proyecto: Guarda info sobre el ebook (99 MXN), catálogo de proveedores y embudos.
+                2. Control de Proyecto: Guarda info sobre el ebook (99 MXN).
                 3. Análisis de Tráfico: Monitorea mayoreomaestro.com. Menciona clics, conversiones y visitas.
                 
                 Directrices:
                 - Proactividad: Advierte sobre métricas o gastos irregulares.
                 - Personalidad: Growth Hacker. Usa ROI, CTR, escalabilidad.
                 - Brevedad: Datos clave primero, detalles después.
-                - Autonomía: Ante tareas complejas di "Ya estoy en ello".
                 
-                FUNCIONES FINANCIERAS (INTEGRACIÓN MAKE/SHEETS):
-                Si el usuario menciona un gasto o ingreso, debes extraer los datos y SIEMPRE incluir al final de tu respuesta la etiqueta estricta:
-                [FINANCE_DATA: {"description": "...", "amount": 0, "type": "Gasto o Ingreso"}]
+                FUNCIONES FINANCIERAS (BALANCE Y ESTADO DE RESULTADOS):
+                Si el usuario menciona un movimiento financiero, extrae los datos para alimentar el Balance General y Estado de Resultados.
+                SIEMPRE incluye al final de tu respuesta la etiqueta estricta:
+                [FINANCE_DATA: {"description": "...", "amount": 0, "type": "Gasto" o "Ingreso", "account_type": "Activo" o "Pasivo" o "Capital" o "Ingreso" o "Gasto_Operativo" o "Costo_Venta", "category": "..."}]
+                
+                Guía de account_type:
+                - Gasto en Ads, salarios, software -> "Gasto_Operativo"
+                - Compra de inventario para vender -> "Costo_Venta"
+                - Venta del Ebook -> "Ingreso"
+                - Compra de equipo -> "Activo"
+                - Préstamo recibido -> "Pasivo"
+                - Inversión inicial de Marco -> "Capital"
             `;
 
-            // Configuración de la Memoria a Largo Plazo
-            if (!chatHistories[chatId]) {
-                chatHistories[chatId] = [];
-            }
-            chatHistories[chatId].push({ role: "user", content: msg.text });
-            if (chatHistories[chatId].length > 15) {
-                chatHistories[chatId].shift(); // Mantener contexto limitado para no saturar tokens
-            }
+            // Guardar mensaje de usuario en SQLite
+            saveMessage(chatId, "user", msg.text);
+
+            // Leer historia desde SQLite
+            const history = await getHistory(chatId);
+
+            // Obtener datos reales de GA4 para inyectar en contexto
+            const ga4Data = await getGA4Data();
+            const dynamicContext = projectContext + \`\\n\\nMETRICAS DE TRÁFICO REALES DE HOY: \${ga4Data}\`;
 
             const messages = [
-                { role: "system", content: projectContext },
-                ...chatHistories[chatId]
+                { role: "system", content: dynamicContext },
+                ...history
             ];
 
             const aiResponse = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -114,15 +192,15 @@ bot.on('message', async (msg) => {
                 messages: messages
             }, {
                 headers: {
-                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`,
                     'Content-Type': 'application/json'
                 }
             });
 
             const replyText = aiResponse.data.choices[0].message.content;
             
-            // Guardar respuesta del asistente en memoria
-            chatHistories[chatId].push({ role: "assistant", content: replyText });
+            // Guardar respuesta del asistente en SQLite
+            saveMessage(chatId, "assistant", replyText);
 
             // Procesar datos financieros si existen
             const financeMatch = replyText.match(/\[FINANCE_DATA: (.*)\]/);
