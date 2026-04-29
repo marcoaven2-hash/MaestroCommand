@@ -160,8 +160,17 @@ bot.on('message', async (msg) => {
             const fileLink = await bot.getFileLink(msg.voice.file_id);
             const audioResponse = await axios({ url: fileLink, method: 'GET', responseType: 'stream' });
             
+            const filePath = `./voice_${chatId}.ogg`;
+            const writer = fs.createWriteStream(filePath);
+            audioResponse.data.pipe(writer);
+            
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
             const formData = new FormData();
-            formData.append('file', audioResponse.data, { filename: 'voice.ogg', contentType: 'audio/ogg' });
+            formData.append('file', fs.createReadStream(filePath), { filename: 'voice.ogg', contentType: 'audio/ogg' });
             formData.append('model', 'whisper-1');
 
             const transcriptResponse = await axios.post('https://api.openai.com/v1/audio/transcriptions', formData, {
@@ -169,6 +178,9 @@ bot.on('message', async (msg) => {
             });
             textToProcess = transcriptResponse.data.text;
             wantsVoice = true; // Responder con voz si envió voz
+            
+            // Limpiar archivo temporal
+            fs.unlinkSync(filePath);
         } catch (e) {
             console.error("Error transcribiendo:", e.message);
             return bot.sendMessage(chatId, "❌ Error al procesar tu audio.");
