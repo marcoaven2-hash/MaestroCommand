@@ -32,28 +32,40 @@ const bot = new TelegramBot(token, {polling: true});
 
 console.log('🤖 Maestro Command Bot está en línea...');
 
-// --- 2. Memoria Persistente (SQLite3) ---
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./chatbot.db', (err) => {
-    if (err) console.error("Error BD:", err.message);
-    else {
-        console.log("✅ Conectado a SQLite.");
-        db.run(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id TEXT, role TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        db.run(`CREATE TABLE IF NOT EXISTS users (chat_id TEXT PRIMARY KEY)`);
-    }
-});
-
-function getHistory(chatId) {
-    return new Promise((resolve) => {
-        db.all(`SELECT role, content FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT 15`, [chatId], (err, rows) => {
-            if (err) resolve([]);
-            else resolve(rows.reverse());
-        });
-    });
+// --- 2. Memoria Persistente (JSON) ---
+const memoryFile = './chatbot_memory.json';
+if (!fs.existsSync(memoryFile)) {
+    fs.writeFileSync(memoryFile, JSON.stringify({ messages: {}, users: [] }));
 }
+
+function getMemory() {
+    try {
+        return JSON.parse(fs.readFileSync(memoryFile, 'utf8'));
+    } catch (e) {
+        return { messages: {}, users: [] };
+    }
+}
+
+function saveMemory(data) {
+    fs.writeFileSync(memoryFile, JSON.stringify(data, null, 2));
+}
+
+async function getHistory(chatId) {
+    const mem = getMemory();
+    return mem.messages[chatId] || [];
+}
+
 function saveMessage(chatId, role, content) {
-    db.run(`INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)`, [chatId, role, content]);
-    db.run(`INSERT OR IGNORE INTO users (chat_id) VALUES (?)`, [chatId]);
+    const mem = getMemory();
+    if (!mem.users.includes(chatId)) mem.users.push(chatId);
+    if (!mem.messages[chatId]) mem.messages[chatId] = [];
+    mem.messages[chatId].push({ role, content });
+    if (mem.messages[chatId].length > 15) mem.messages[chatId].shift();
+    saveMemory(mem);
+}
+
+function getAllUsers() {
+    return getMemory().users;
 }
 
 // --- 4. Google Analytics (GA4) ---
@@ -84,24 +96,21 @@ const cron = require('node-cron');
 cron.schedule('0 20 * * *', async () => {
     console.log('Ejecutando reporte proactivo cron...');
     const ga4Data = await getGA4Data();
-    db.all(`SELECT chat_id FROM users`, [], async (err, rows) => {
-        if (err || !rows) return;
-        for (const row of rows) {
-            const chatId = row.chat_id;
-            const context = `Eres el COO. Escribe un mensaje corto y proactivo para Marco. Es el corte del día (8:00 PM). Tráfico hoy: ${ga4Data}. Pídele sus gastos para cuadrar el Estado de Resultados. Sé muy ejecutivo y usa métricas de Growth.`;
-            try {
-                const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
-                    model: "gpt-4o",
-                    messages: [{ role: "system", content: context }]
-                }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
-                const reply = ai.data.choices[0].message.content;
-                await bot.sendMessage(chatId, reply);
-                saveMessage(chatId, "assistant", reply);
-            } catch(e) {
-                console.error("Error en cron:", e.message);
-            }
+    const users = getAllUsers();
+    for (const chatId of users) {
+        const context = `Eres el COO. Escribe un mensaje corto y proactivo para Marco. Es el corte del día (8:00 PM). Tráfico hoy: ${ga4Data}. Pídele sus gastos para cuadrar el Estado de Resultados. Sé muy ejecutivo y usa métricas de Growth.`;
+        try {
+            const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
+                model: "gpt-4o",
+                messages: [{ role: "system", content: context }]
+            }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
+            const reply = ai.data.choices[0].message.content;
+            await bot.sendMessage(chatId, reply);
+            saveMessage(chatId, "assistant", reply);
+        } catch(e) {
+            console.error("Error en cron:", e.message);
         }
-    });
+    }
 });
 
 // Función para generar voz con ElevenLabs
