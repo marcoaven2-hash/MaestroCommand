@@ -123,8 +123,8 @@ cron.schedule('0 11 * * *', async () => {
             
             const reply = ai.data.choices[0].message.content;
             
-            // Limpiar etiqueta financiera para el usuario
-            const cleanReply = reply.replace(/\[FINANCE_DATA: .*\]/g, '').trim();
+            // Limpiar etiqueta financiera para el usuario (incluyendo saltos de línea)
+            const cleanReply = reply.replace(/\[FINANCE_DATA: [\s\S]*?\]/g, '').trim();
             
             // Enviar texto
             await bot.sendMessage(chatId, cleanReply);
@@ -147,7 +147,7 @@ cron.schedule('0 11 * * *', async () => {
 async function generateVoice(text, chatId) {
     try {
         const response = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB`, // Voz de Adam (ID Corregido)
+            `https://api.elevenlabs.io/v1/text-to-speech/IKne3meq5aSn9XLyUdCD`, // Voz de Charlie (Disponible en tu cuenta)
             {
                 text: text,
                 model_id: "eleven_turbo_v2_5", // Modelo más rápido y eficiente
@@ -207,7 +207,7 @@ bot.onText(/\/test_morning/, async (msg) => {
         }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
         
         const reply = ai.data.choices[0].message.content;
-        const cleanReply = reply.replace(/\[FINANCE_DATA: .*\]/g, '').trim();
+        const cleanReply = reply.replace(/\[FINANCE_DATA: [\s\S]*?\]/g, '').trim();
         
         await bot.sendMessage(chatId, cleanReply);
         saveMessage(chatId, "assistant", reply);
@@ -336,8 +336,8 @@ bot.on('message', async (msg) => {
                 }
             }
 
-            // Responder con texto (limpiando la etiqueta de la respuesta final)
-            const cleanReply = replyText.replace(/\[FINANCE_DATA: .*\]/, '').trim();
+            // Responder con texto (limpiando la etiqueta de la respuesta final incluso si es multilínea)
+            const cleanReply = replyText.replace(/\[FINANCE_DATA: [\s\S]*?\]/g, '').trim();
             await bot.sendMessage(chatId, cleanReply);
             
             // Generar voz por defecto (ElevenLabs habilitado)
