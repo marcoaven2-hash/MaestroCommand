@@ -94,7 +94,7 @@ async function getGA4Data() {
 // --- 3. Reportes Proactivos (node-cron) ---
 const cron = require('node-cron');
 
-// Todos los días a las 11:00 AM (Zona horaria de Marco: America/Tijuana o similar -07:00)
+// Todos los días a las 11:00 AM (Zona horaria de Marco: America/Tijuana)
 cron.schedule('0 11 * * *', async () => {
     console.log('Ejecutando reporte proactivo matutino (11 AM)...');
     const ga4Data = await getGA4Data();
@@ -104,15 +104,12 @@ cron.schedule('0 11 * * *', async () => {
         const morningContext = `
             Eres el COO de Mayoreo Maestro. Es la reunión matutina de las 11:00 AM con Marco.
             Objetivo: Registrar gastos del día anterior y planificar el flujo de caja de hoy.
-            Datos de tráfico de ayer/hoy: ${ga4Data}.
+            Datos de tráfico: ${ga4Data}.
             
             Instrucciones:
-            1. Saluda de forma ejecutiva y proactiva.
-            2. Menciona brevemente el tráfico si es relevante.
-            3. Pídele directamente que registre los gastos pendientes para mantener el Estado de Resultados actualizado.
-            4. Sé breve, inteligente y enfocado en Growth.
-            
-            IMPORTANTE: Tu respuesta será convertida a voz realista, así que escribe de forma natural pero profesional.
+            1. Saluda de forma ejecutiva.
+            2. Pídele registrar gastos para el Balance General.
+            3. Sé breve y enfocado en ROI.
         `;
         
         try {
@@ -122,18 +119,11 @@ cron.schedule('0 11 * * *', async () => {
             }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
             
             const reply = ai.data.choices[0].message.content;
-            
-            // Limpiar etiqueta financiera para el usuario (incluyendo saltos de línea)
             const cleanReply = reply.replace(/\[FINANCE_DATA: [\s\S]*?\]/g, '').trim();
             
-            // Enviar texto
             await bot.sendMessage(chatId, cleanReply);
             saveMessage(chatId, "assistant", reply);
-            
-            // Enviar VOZ (ElevenLabs)
             await generateVoice(cleanReply, chatId);
-            
-            console.log(`Reporte de 11 AM enviado a ${chatId}`);
         } catch(e) {
             console.error("Error en cron matutino:", e.message);
         }
@@ -143,15 +133,37 @@ cron.schedule('0 11 * * *', async () => {
     timezone: "America/Tijuana"
 });
 
-// Función para generar voz con ElevenLabs
+// Comando de diagnóstico
+bot.onText(/\/debug/, async (msg) => {
+    const chatId = msg.chat.id;
+    let status = "🔍 Diagnóstico del Sistema:\n\n";
+    
+    try {
+        await axios.get('https://api.openai.com/v1/models', {
+            headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
+        });
+        status += "✅ OpenAI: Conectado\n";
+    } catch(e) { status += "❌ OpenAI: Error (" + e.message + ")\n"; }
+    
+    try {
+        const ev = await axios.get('https://api.elevenlabs.io/v1/voices', {
+            headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY }
+        });
+        status += "✅ ElevenLabs: Conectado (" + ev.data.voices.length + " voces)\n";
+    } catch(e) { status += "❌ ElevenLabs: Error (" + e.message + ")\n"; }
+    
+    bot.sendMessage(chatId, status);
+});
+
 async function generateVoice(text, chatId) {
     try {
+        console.log(`Generando voz para ${chatId}...`);
         const response = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/IKne3meq5aSn9XLyUdCD`, // Voz de Charlie (Disponible en tu cuenta)
+            `https://api.elevenlabs.io/v1/text-to-speech/IKne3meq5aSn9XLyUdCD`, // Charlie
             {
                 text: text,
-                model_id: "eleven_turbo_v2_5", // Modelo más rápido y eficiente
-                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                model_id: "eleven_multilingual_v2", // Multilingual para mejor acento
+                voice_settings: { stability: 0.5, similarity_boost: 0.8 }
             },
             {
                 headers: {
@@ -162,13 +174,16 @@ async function generateVoice(text, chatId) {
             }
         );
 
-        const fileName = `voice_${chatId}.mp3`;
-        fs.writeFileSync(fileName, response.data);
-        await bot.sendVoice(chatId, fileName);
-        fs.unlinkSync(fileName); // Borrar después de enviar
+        // Enviar directamente como Buffer para evitar problemas de disco
+        await bot.sendVoice(chatId, Buffer.from(response.data), {}, { 
+            contentType: 'audio/mpeg', 
+            filename: 'voice.mp3' 
+        });
+        console.log('✅ Voz enviada con éxito');
     } catch (error) {
-        console.error('Error en ElevenLabs:', error.message);
-        bot.sendMessage(chatId, "⚠️ No pude generar la nota de voz, pero aquí tienes el texto.");
+        const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+        console.error('Error en ElevenLabs:', errorMsg);
+        bot.sendMessage(chatId, "⚠️ Error en voz: " + errorMsg.substring(0, 100));
     }
 }
 
