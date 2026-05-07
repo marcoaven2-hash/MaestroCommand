@@ -184,6 +184,35 @@ bot.onText(/\/status/, async (msg) => {
     await generateVoice("Hola Marco. Aquí tienes el estatus ejecutivo. La infraestructura está lista y el embudo activo. Monitoreando tráfico en TikTok y listos para escalar operaciones.", chatId);
 });
 
+// Comando para probar el reporte matutino manualmente
+bot.onText(/\/test_morning/, async (msg) => {
+    const chatId = msg.chat.id;
+    await bot.sendMessage(chatId, "⏳ Generando reporte matutino de prueba...");
+    
+    const ga4Data = await getGA4Data();
+    const morningContext = `
+        Eres el COO de Mayoreo Maestro. Esta es una prueba del reporte matutino de las 11:00 AM.
+        Objetivo: Registrar gastos y planificar flujo de caja.
+        Datos de tráfico: ${ga4Data}.
+        Sé proactivo, ejecutivo y usa la voz de Adam.
+    `;
+    
+    try {
+        const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
+            model: "gpt-4o",
+            messages: [{ role: "system", content: morningContext }]
+        }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
+        
+        const reply = ai.data.choices[0].message.content;
+        await bot.sendMessage(chatId, reply);
+        saveMessage(chatId, "assistant", reply);
+        await generateVoice(reply, chatId);
+    } catch (e) {
+        console.error("Error en test_morning:", e.message);
+        bot.sendMessage(chatId, "❌ Hubo un error al generar el reporte de prueba.");
+    }
+});
+
 // Responder a mensajes de texto normales con IA
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
