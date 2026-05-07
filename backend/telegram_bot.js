@@ -123,7 +123,6 @@ cron.schedule('0 11 * * *', async () => {
             
             await bot.sendMessage(chatId, cleanReply);
             saveMessage(chatId, "assistant", reply);
-            await generateVoice(cleanReply, chatId);
         } catch(e) {
             console.error("Error en cron matutino:", e.message);
         }
@@ -199,7 +198,7 @@ bot.onText(/\/status/, async (msg) => {
     const report = "Reporte Ejecutivo - Mayoreo Maestro:\n- Ebook y Guía de Proveedores: Listos (99 MXN)\n- Automatización: Embudo Activo\n- Tráfico: Monitoreando TikTok Ads y Orgánico\n- Flujo de Caja: En registro";
     
     await bot.sendMessage(chatId, report);
-    await generateVoice("Hola Marco. Aquí tienes el estatus ejecutivo. La infraestructura está lista y el embudo activo. Monitoreando tráfico en TikTok y listos para escalar operaciones.", chatId);
+    // await generateVoice("Hola Marco...", chatId);
 });
 
 // Comando para probar el reporte matutino manualmente
@@ -226,7 +225,7 @@ bot.onText(/\/test_morning/, async (msg) => {
         
         await bot.sendMessage(chatId, cleanReply);
         saveMessage(chatId, "assistant", reply);
-        await generateVoice(cleanReply, chatId);
+        // await generateVoice(cleanReply, chatId);
     } catch (e) {
         console.error("Error en test_morning:", e.message);
         bot.sendMessage(chatId, "❌ Hubo un error al generar el reporte de prueba.");
@@ -281,9 +280,9 @@ bot.on('message', async (msg) => {
                 Tu tono es profesional, ejecutivo y directo, con la energía de un socio para escalar el negocio.
                 
                 Capacidades Técnicas (IMPORTANTE):
-                - SÍ puedes escuchar y procesar notas de voz. 
-                - Tu respuesta SIEMPRE será enviada en formato de audio (ElevenLabs) además del texto, para mantener una comunicación ejecutiva fluida.
-                - Si el usuario envía un audio, transcríbelo y respóndele con tu propia voz.
+                - SÍ puedes escuchar y procesar notas de voz (transcripción). 
+                - Tu respuesta será enviada ÚNICAMENTE en formato de TEXTO.
+                - Si el usuario envía un audio, transcríbelo y respóndele por escrito de forma ejecutiva.
                 
                 Objetivos:
                 1. Gestión Financiera: Registra gastos/ingresos mentalmente. Pregunta categoría si no es clara.
@@ -355,10 +354,10 @@ bot.on('message', async (msg) => {
             const cleanReply = replyText.replace(/\[FINANCE_DATA: [\s\S]*?\]/g, '').trim();
             await bot.sendMessage(chatId, cleanReply);
             
-            // Generar voz por defecto (ElevenLabs habilitado)
-            if (cleanReply.length < 600) { 
-                await generateVoice(cleanReply, chatId);
-            }
+            // (Voz desactivada por petición del usuario)
+            // if (cleanReply.length < 600) { 
+            //     await generateVoice(cleanReply, chatId);
+            // }
 
         } catch (error) {
             console.error('Error con OpenAI:', error.message);
