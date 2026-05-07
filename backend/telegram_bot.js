@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 const express = require('express');
 require('dotenv').config();
+const moment = require('moment-timezone');
 
 const FormData = require('form-data');
 
@@ -92,32 +93,58 @@ async function getGA4Data() {
 
 // --- 3. Reportes Proactivos (node-cron) ---
 const cron = require('node-cron');
-// Todos los días a las 20:00 (8 PM)
-cron.schedule('0 20 * * *', async () => {
-    console.log('Ejecutando reporte proactivo cron...');
+
+// Todos los días a las 11:00 AM (Zona horaria de Marco: America/Tijuana o similar -07:00)
+cron.schedule('0 11 * * *', async () => {
+    console.log('Ejecutando reporte proactivo matutino (11 AM)...');
     const ga4Data = await getGA4Data();
     const users = getAllUsers();
+    
     for (const chatId of users) {
-        const context = `Eres el COO. Escribe un mensaje corto y proactivo para Marco. Es el corte del día (8:00 PM). Tráfico hoy: ${ga4Data}. Pídele sus gastos para cuadrar el Estado de Resultados. Sé muy ejecutivo y usa métricas de Growth.`;
+        const morningContext = `
+            Eres el COO de Mayoreo Maestro. Es la reunión matutina de las 11:00 AM con Marco.
+            Objetivo: Registrar gastos del día anterior y planificar el flujo de caja de hoy.
+            Datos de tráfico de ayer/hoy: ${ga4Data}.
+            
+            Instrucciones:
+            1. Saluda de forma ejecutiva y proactiva.
+            2. Menciona brevemente el tráfico si es relevante.
+            3. Pídele directamente que registre los gastos pendientes para mantener el Estado de Resultados actualizado.
+            4. Sé breve, inteligente y enfocado en Growth.
+            
+            IMPORTANTE: Tu respuesta será convertida a voz realista, así que escribe de forma natural pero profesional.
+        `;
+        
         try {
             const ai = await axios.post('https://api.openai.com/v1/chat/completions', {
                 model: "gpt-4o",
-                messages: [{ role: "system", content: context }]
+                messages: [{ role: "system", content: morningContext }]
             }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
+            
             const reply = ai.data.choices[0].message.content;
+            
+            // Enviar texto
             await bot.sendMessage(chatId, reply);
             saveMessage(chatId, "assistant", reply);
+            
+            // Enviar VOZ (ElevenLabs)
+            await generateVoice(reply, chatId);
+            
+            console.log(`Reporte de 11 AM enviado a ${chatId}`);
         } catch(e) {
-            console.error("Error en cron:", e.message);
+            console.error("Error en cron matutino:", e.message);
         }
     }
+}, {
+    scheduled: true,
+    timezone: "America/Tijuana"
 });
 
 // Función para generar voz con ElevenLabs
 async function generateVoice(text, chatId) {
     try {
         const response = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/cjVigY5qzO86Huf0OWal`, // Voz de Eric
+            `https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgH9P3Oe7uSj`, // Voz de Adam (Premium/Realista)
             {
                 text: text,
                 model_id: "eleven_multilingual_v2",
@@ -205,7 +232,9 @@ bot.on('message', async (msg) => {
                 Tu tono es profesional, ejecutivo y directo, con la energía de un socio para escalar el negocio.
                 
                 Capacidades Técnicas (IMPORTANTE):
-                - SÍ puedes escuchar y procesar notas de voz. Si el usuario pregunta, confírmale que el sistema transcribe sus audios automáticamente para ti, y que tú le responderás con voz.
+                - SÍ puedes escuchar y procesar notas de voz. 
+                - Tu respuesta SIEMPRE será enviada en formato de audio (ElevenLabs) además del texto, para mantener una comunicación ejecutiva fluida.
+                - Si el usuario envía un audio, transcríbelo y respóndele con tu propia voz.
                 
                 Objetivos:
                 1. Gestión Financiera: Registra gastos/ingresos mentalmente. Pregunta categoría si no es clara.
@@ -277,10 +306,8 @@ bot.on('message', async (msg) => {
             const cleanReply = replyText.replace(/\[FINANCE_DATA: .*\]/, '').trim();
             await bot.sendMessage(chatId, cleanReply);
             
-            // Generar voz si lo pidió o si envió un audio
-            const userAskedForVoice = textToProcess.toLowerCase().includes('voz') || textToProcess.toLowerCase().includes('audio');
-            
-            if ((wantsVoice || userAskedForVoice) && cleanReply.length < 500) {
+            // Generar voz por defecto (ElevenLabs habilitado)
+            if (cleanReply.length < 600) { 
                 await generateVoice(cleanReply, chatId);
             }
 
