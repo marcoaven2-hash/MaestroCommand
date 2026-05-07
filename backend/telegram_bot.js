@@ -123,12 +123,15 @@ cron.schedule('0 11 * * *', async () => {
             
             const reply = ai.data.choices[0].message.content;
             
+            // Limpiar etiqueta financiera para el usuario
+            const cleanReply = reply.replace(/\[FINANCE_DATA: .*\]/g, '').trim();
+            
             // Enviar texto
-            await bot.sendMessage(chatId, reply);
+            await bot.sendMessage(chatId, cleanReply);
             saveMessage(chatId, "assistant", reply);
             
             // Enviar VOZ (ElevenLabs)
-            await generateVoice(reply, chatId);
+            await generateVoice(cleanReply, chatId);
             
             console.log(`Reporte de 11 AM enviado a ${chatId}`);
         } catch(e) {
@@ -144,10 +147,10 @@ cron.schedule('0 11 * * *', async () => {
 async function generateVoice(text, chatId) {
     try {
         const response = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgH9P3Oe7uSj`, // Voz de Adam (Premium/Realista)
+            `https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB`, // Voz de Adam (ID Corregido)
             {
                 text: text,
-                model_id: "eleven_multilingual_v2",
+                model_id: "eleven_turbo_v2_5", // Modelo más rápido y eficiente
                 voice_settings: { stability: 0.5, similarity_boost: 0.75 }
             },
             {
@@ -204,9 +207,11 @@ bot.onText(/\/test_morning/, async (msg) => {
         }, { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } });
         
         const reply = ai.data.choices[0].message.content;
-        await bot.sendMessage(chatId, reply);
+        const cleanReply = reply.replace(/\[FINANCE_DATA: .*\]/g, '').trim();
+        
+        await bot.sendMessage(chatId, cleanReply);
         saveMessage(chatId, "assistant", reply);
-        await generateVoice(reply, chatId);
+        await generateVoice(cleanReply, chatId);
     } catch (e) {
         console.error("Error en test_morning:", e.message);
         bot.sendMessage(chatId, "❌ Hubo un error al generar el reporte de prueba.");
